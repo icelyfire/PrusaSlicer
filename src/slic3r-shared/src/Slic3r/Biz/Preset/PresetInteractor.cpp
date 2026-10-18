@@ -18,6 +18,8 @@
 #include "Slic3r/Biz/PrintToolConfigObservableList.hpp"
 #include "Slic3r/Biz/OverridableConfigBoxObservableList.hpp"
 #include "Slic3r/Biz/BackupStore.hpp"
+#include "Slic3r/Biz/Platform/PlatformServices.hpp"
+#include "Slic3r/Biz/Platform/IAppConfigProvider.hpp"
 
 #include "tbb/parallel_for.h"
 #include "tbb/blocked_range.h"
@@ -125,8 +127,12 @@ void append_evaluated_presets_to_runtime(
     }
 }
 
-
 } // namespace
+
+std::string stable_hw_config_key(const Domain::Preset::HwPrinterConfig& hw_config)
+{
+    return hw_config.vendor_id + "/" + hw_config.printer_id + "/" + hw_config.template_id.value_or("");
+}
 
 bool PresetItem::preset_runtime_only() const
 {
@@ -880,7 +886,32 @@ void PresetInteractor::initialize_config_container_with_default(Domain::ConfigCo
     };
     auto filtered_range = items | std::views::filter(filter_pred);
     auto it = std::ranges::min_element(filtered_range, {}, sort_key);
-    const PresetItem p  = it == std::ranges::end(filtered_range) ? items.front() : *it;
+    PresetItem p        = it == std::ranges::end(filtered_range) ? items.front() : *it;
+
+    // Prefer the printer preset the user selected the last time, if it still exists.
+    auto& services = Platform::PlatformServices::instance();
+    if (services.has_app_config_provider()) {
+        const auto [last_hw_config_key, last_preset_id] = services.app_config_provider().last_used_printer_preset();
+        if (!last_preset_id.empty()) {
+            // hw config ids are regenerated on every start, so find the current one by its stable key
+            std::string last_hw_config_id;
+            for (const auto& evaluated : preset_bundle.evaluated_presets | std::views::values | std::views::join) {
+                if (evaluated.preset.id == last_preset_id
+                    && stable_hw_config_key(evaluated.hw_config) == last_hw_config_key) {
+                    last_hw_config_id = evaluated.hw_config.id;
+                    break;
+                }
+            }
+            const auto last_it = std::ranges::find_if(
+                items,
+                [&](const PresetItem& item)
+                { return item.id == last_preset_id && item.hw_printer_config_id == last_hw_config_id; }
+            );
+            if (last_it != items.end()) {
+                p = *last_it;
+            }
+        }
+    }
 
     InvokeLaterBag bag;
     fill_config_container_with_selected_preset(cc, p.hw_printer_config_id, p.id, false, bag);
@@ -2037,6 +2068,15 @@ void PresetInteractor::select_printer_preset(
 
     if (user) {
         m_backup_store.invalidate_backup(m_selected_project_id);
+
+        auto& services = Platform::PlatformServices::instance();
+        if (services.has_app_config_provider()) {
+            const auto& hw_config = get_printer_config(printer_hw_config_id).first.get();
+            services.app_config_provider().set_last_used_printer_preset(
+                stable_hw_config_key(hw_config),
+                printer_preset_id
+            );
+        }
     }
 }
 

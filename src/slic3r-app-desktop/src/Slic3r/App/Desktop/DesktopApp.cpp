@@ -196,12 +196,34 @@ int run(const Slic3r::App::InitParams& init_params, AppServices& app_services)
     return wxEntry(argc, argv);
 }
 
+// True when the printer preset used last time was already restored on start
+// (see PresetInteractor::initialize_config_container_with_default).
+static bool last_used_printer_is_selected(const Biz::Preset::PresetInteractor& preset_interactor)
+{
+    using Biz::Platform::PlatformServices;
+    auto& services{PlatformServices::instance()};
+    if (!services.has_app_config_provider()) {
+        return false;
+    }
+    const auto [last_hw_config_key, last_preset_id] = services.app_config_provider().last_used_printer_preset();
+    if (last_preset_id.empty()) {
+        return false;
+    }
+    const auto& selected{preset_interactor.selected_printer_preset()};
+    return selected.printer.id == last_preset_id
+        && Biz::Preset::stable_hw_config_key(selected.hw_config) == last_hw_config_key;
+}
+
 // Temporary workaround, to select a favorite printer on application start.
 // DELETE this once it is not needed.
 static void select_favorite_preset(
     Biz::Preset::PresetInteractor& preset_interactor
 )
 {
+    if (last_used_printer_is_selected(preset_interactor)) {
+        return;
+    }
+
     const auto& app_services{AppServices::instance()};
     const AppConfig& app_config{app_services.app_config()};
     const AppSettingsAdvanced::PrinterFavoritePresets& printer_favorite_presets{

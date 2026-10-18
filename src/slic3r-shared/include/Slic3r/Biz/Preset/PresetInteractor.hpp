@@ -1027,4 +1027,9 @@ private:
 
     bool m_use_hw_config_short_name{true};
 };
+
+/// HwPrinterConfig::id is generated anew on every start. This key comes from the vendor bundle,
+/// so it identifies the printer model across restarts (e.g. to remember the last used printer).
+std::string stable_hw_config_key(const Domain::Preset::HwPrinterConfig& hw_config);
+
 } // namespace Slic3r::Biz::Preset

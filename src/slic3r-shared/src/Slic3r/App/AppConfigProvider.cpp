@@ -42,6 +42,22 @@ void AppConfigProvider::set_last_used_physical_printer(const std::string& uuid)
     );
 }
 
+std::pair<std::string, std::string> AppConfigProvider::last_used_printer_preset() const
+{
+    const auto& app_config = AppServices::instance().app_config();
+    return {
+        app_config.get<std::string>("last_used_printer_hw_config_key"),
+        app_config.get<std::string>("last_used_printer_preset")
+    };
+}
+
+void AppConfigProvider::set_last_used_printer_preset(const std::string& hw_config_key, const std::string& preset_id)
+{
+    auto& interactor = AppServices::instance().app_config_interactor();
+    interactor.set_item_value("last_used_printer_hw_config_key", Domain::ConfigValue(hw_config_key));
+    interactor.set_item_value("last_used_printer_preset", Domain::ConfigValue(preset_id));
+}
+
 bool AppConfigProvider::get_show_step_import_parameters() const
 {
     return AppServices::instance().app_config().get<bool>("show_step_import_parameters");
