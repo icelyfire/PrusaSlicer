@@ -56,6 +56,7 @@ MaterialSettingsButton::MaterialSettingsButton(
     m_color_marker->set_background_border_width(1);
     m_color_marker->set_self_align(YGAlignCenter);
     m_color_marker->set_delayed_update(true);
+    m_color_marker->set_palette_mode(true);
     m_color_marker->callbacks().color_edited = [this](const ImColor& color)
     {
         m_project_interactor.project_settings_interactor().set_color_from_user(

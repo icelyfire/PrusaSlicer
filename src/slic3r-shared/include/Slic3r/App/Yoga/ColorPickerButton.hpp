@@ -28,6 +28,10 @@ public:
     bool delayed_update() const;
     void set_delayed_update(bool delayed);
 
+    /// Shows a palette of basic colors in the popup, the color wheel is behind a "Custom" button.
+    bool palette_mode() const;
+    void set_palette_mode(bool enabled);
+
 protected:
     void on_color_edited(const ImColor& color);
 

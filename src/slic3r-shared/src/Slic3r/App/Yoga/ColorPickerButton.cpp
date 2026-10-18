@@ -20,7 +20,13 @@ ColorPickerButton::ColorPickerButton(const std::string& name)
     m_color_picker->set_flex_grow(1);
     m_color_picker->callbacks().color_edited = [this](const ImColor& color)
     { on_color_edited(color); };
+    m_color_picker->callbacks().color_picked = [this](const ImColor& color)
+    {
+        on_color_edited(color);
+        m_popup->close();
+    };
     m_popup->set_position(Position::Right);
+    m_popup->callbacks().opened = [this] { m_color_picker->show_palette(); };
     m_popup->callbacks().closed = [this]
     {
         if (m_delayed_update && m_callbacks.color_edited) {
@@ -75,6 +81,16 @@ bool ColorPickerButton::delayed_update() const
 void ColorPickerButton::set_delayed_update(bool delayed_update)
 {
     m_delayed_update = delayed_update;
+}
+
+bool ColorPickerButton::palette_mode() const
+{
+    return m_color_picker->palette_mode();
+}
+
+void ColorPickerButton::set_palette_mode(bool enabled)
+{
+    m_color_picker->set_palette_mode(enabled);
 }
 
 void ColorPickerButton::on_color_edited(const ImColor& color)
